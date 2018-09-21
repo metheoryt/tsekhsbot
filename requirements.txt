@@ -1,0 +1,4 @@
+python-telegram-bot
+qiwipy
+python-dotenv
+sqlalchemy

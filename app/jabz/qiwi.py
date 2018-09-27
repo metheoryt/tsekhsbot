@@ -4,10 +4,10 @@ from decimal import Decimal
 from pyqiwi import Wallet
 import pyqiwi
 from sqlalchemy.orm.exc import NoResultFound
-import cfg
 from app.models import Donate
-from stuff.decorators import with_session
+from app.stuff import with_session
 from app import queue
+import cfg
 
 
 log = logging.getLogger(__name__)

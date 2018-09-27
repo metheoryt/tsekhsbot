@@ -35,7 +35,7 @@ def with_chat(fn):
     return wrapper
 
 
-def as_handler(handler_cls, **handler_kwargs):
+def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
     """
     Добавляет функцию как обработчик.
     :param handler_cls: класс обработчика (CommandHandler, MessageHandler)
@@ -47,7 +47,7 @@ def as_handler(handler_cls, **handler_kwargs):
         @wraps(fn)
         def wrapper(bot, update_or_job, *args, chat_data, **kwargs):
             # мэйнтэйним без спросу (pass_chat_data=True ниже), но передаём только по требованию
-            if handler_kwargs.get('pass_chat_data'):
+            if pass_chat_data:
                 kwargs['chat_data'] = chat_data
 
             if chat_data.get('__next_step') is not None:

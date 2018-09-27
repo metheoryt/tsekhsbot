@@ -1,7 +1,7 @@
 import logging
 from telegram import Bot, ParseMode
 from app.models import Donate, Chat, ThanksADay
-from stuff.decorators import with_session
+from app.stuff import with_session
 from app import queue
 from app import templ
 import sqlalchemy as sa

@@ -2,3 +2,6 @@ python-telegram-bot
 qiwipy
 python-dotenv
 sqlalchemy
+sqlalchemy_utils
+Jinja2
+python-telegram-bot[socks]

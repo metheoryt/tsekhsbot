@@ -1,7 +1,6 @@
 from sqlalchemy.engine import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
-from functools import wraps
 import cfg
 
 
@@ -19,21 +18,6 @@ class Base(_Base):
     q = Session.query_property()
 
 
-def with_session(fn):
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        s = Session()
-        try:
-            r = fn(s, *args, **kwargs)
-            s.commit()
-            return r
-        except Exception:
-            s.rollback()
-            raise
-        finally:
-            s.close()
-    return wrapper
-
-
-from .chat import User
+from .chat import Chat
+from .donate import Donate
+from .misc import ThanksADay

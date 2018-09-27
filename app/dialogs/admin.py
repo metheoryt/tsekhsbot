@@ -98,7 +98,7 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
         bot.send_message(
             chat.id,
             f'Я сохранил донат, но о нём никто не узнает, '
-            f'пока ты не разрешишь (/donates)',
+            f'пока ты не разрешишь (/pending)',
             parse_mode=ParseMode.MARKDOWN
         )
 
@@ -145,7 +145,7 @@ def accept_reject_donate(bot: Bot, update: Update, chat: Chat):
     did = int(update.message.text[1:])
     d = Donate.q.get(did)
     if not d:
-        bot.send_message(chat.id, 'такого доната нет, /donates')
+        bot.send_message(chat.id, 'такого доната нет, /pending')
         return
     if d.counts is not None:
         bot.send_message(chat.id, f'этот донат уже был рассмотрен, ныне он {"не " if not d.counts else ""}считается')

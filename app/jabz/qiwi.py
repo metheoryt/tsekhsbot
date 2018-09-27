@@ -30,7 +30,7 @@ def fetch_donates(bot, job, s):
 
     # Все входящие операции за либо последний месяц, либо промежуток
     # от даты последней транзакции до сейчас
-    h = w.history(rows=100, operation='IN', start_date=start_date, end_date=datetime.now())
+    h = w.history(rows=40, operation='IN', start_date=start_date, end_date=datetime.now())
 
     ts = h['transactions']
     """:type: list[pyqiwi.types.Transaction]"""

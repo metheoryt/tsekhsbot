@@ -16,10 +16,10 @@ def notify_about_new_donate(bot: Bot, job):
     """:type: Donate"""
 
     if not d:
-        log.info('nothing fresh')
+        log.info('nothing fresh in non-announced donates')
         return
 
-    log.info(f'have {len(d)} fresh donates')
+    log.info(f'got fresh {d}')
 
     receivers = Chat.q.filter(Chat.muted == False).all()
     """:type: list[Chat]"""

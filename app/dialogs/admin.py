@@ -38,8 +38,8 @@ def go_admin(bot: Bot, update: Update, chat: Chat, chat_data: dict):
 
 
 @stuff.dialog_part('проверить токен')
-@stuff.inject(chat=True)
-def verify_token(bot: Bot, update: Update, chat: Chat, chat_data: dict):
+@stuff.inject(chat=True, sesh=True)  # sesh коммитит изменения если всё хорошо
+def verify_token(bot: Bot, update: Update, chat: Chat, sesh, chat_data: dict):
     chat_data['go_admin_tries'] += 1
 
     if chat_data['go_admin_tries'] == 3:
@@ -94,7 +94,6 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
 
     def save_donate():
         sesh.add(d)
-        sesh.commit()
         bot.send_message(
             chat.id,
             f'Я сохранил донат, но о нём никто не узнает, '
@@ -139,8 +138,8 @@ def view_pending_donates(bot: Bot, update: Update, chat: Chat):
 
 @stuff.admin_only
 @stuff.as_handler(RegexHandler, pattern=r'^[\+\-]{1}\d{1,4}$')
-@stuff.inject(chat=True)
-def accept_reject_donate(bot: Bot, update: Update, chat: Chat):
+@stuff.inject(chat=True, sesh=True)
+def accept_reject_donate(bot: Bot, update: Update, chat: Chat, sesh):
     counts = {'+': True, '-': False}[update.message.text[:1]]
     did = int(update.message.text[1:])
     d = Donate.q.get(did)
@@ -152,6 +151,7 @@ def accept_reject_donate(bot: Bot, update: Update, chat: Chat):
         return
 
     d.counts = counts
+
     msg = f'донат #{d.id} '
     if not counts:
         msg += 'больше не побеспокоит'

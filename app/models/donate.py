@@ -49,7 +49,7 @@ class Donate(Base):
 
     @property
     def masked_phone(self):
-        return f'{self.author_phone[:7]}****' if self.author_phone and len(self.author_phone) > 7 else None
+        return f'{self.author_phone[:7]}xxxxx' if self.author_phone and len(self.author_phone) > 7 else None
 
     counts = sa.Column(sa.Boolean, nullable=True, default=None)
     """Считается ли пожертвование за пожертвование. None если это ещё не определено"""

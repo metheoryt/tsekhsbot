@@ -4,24 +4,25 @@ from app import templ
 from app import stuff
 from app.models import Chat
 from telegram import ParseMode, Bot, Update
-from telegram.ext import CommandHandler
+from telegram.ext import CommandHandler, RegexHandler
 import logging
 from cfg import BOT_TOKEN
-from models import Donate
-from models.donate import Currency
+from app.models import Donate
 
 
 log = logging.getLogger(__name__)
 
-@stuff.inject(chat=True)
+
 @stuff.as_handler(CommandHandler, command='cancel', pass_chat_data=True)
+@stuff.inject(chat=True)
 def cancer(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     """отменяет любые незавершённые диалоги"""
     chat_data.clear()
     bot.send_message(chat.id, 'ike..')
 
 
-@stuff.as_handler(CommandHandler, command='admin', pass_chat_data=True, chat=True)
+@stuff.as_handler(CommandHandler, command='admin', pass_chat_data=True)
+@stuff.inject(chat=True)
 def go_admin(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     if not chat.is_private:
         bot.send_message(chat.id, 'Давай в личку')
@@ -36,8 +37,8 @@ def go_admin(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     return 'проверить токен'
 
 
-@stuff.inje
 @stuff.dialog_part('проверить токен')
+@stuff.inject(chat=True)
 def verify_token(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     chat_data['go_admin_tries'] += 1
 
@@ -58,17 +59,16 @@ def verify_token(bot: Bot, update: Update, chat: Chat, chat_data: dict):
 # Новый донат
 #
 
-
-@stuff.admin_only
-@stuff.with_chat
 @stuff.as_handler(CommandHandler, command='donate')
+@stuff.admin_only
+@stuff.inject(chat=True)
 def new_donate(bot: Bot, update: Update, chat: Chat):
     bot.send_message(chat.id, 'какова сумма пожертвования?')
     return 'получить сумму пожертвования'
 
 
-@stuff.with_chat
 @stuff.dialog_part('получить сумму пожертвования')
+@stuff.inject(chat=True)
 def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     t = update.message.text
 
@@ -77,17 +77,17 @@ def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: di
     except Exception:
         amount, currency = t.strip(), None
 
-    d = Donate(amount=Decimal(amount), currency= Currency[currency.upper()] if currency else None)  # KZT по умолчанию
+    # currency KZT по умолчанию
+    d = Donate(amount=Decimal(amount), currency=Donate.Currency[currency.upper()] if currency else None)
     chat_data['new_donate'] = d
     bot.send_message(chat.id, 'Как зовут автора (или номер его телефона)?')
 
     return 'получить имя или телефон автора'
 
 
-@stuff.with_chat
-@stuff.with_session
 @stuff.dialog_part('получить имя или телефон автора')
-def accept_new_donate_author(bot: Bot, update: Update, sesh: Session, chat: Chat, chat_data: dict):
+@stuff.inject(chat=True, sesh=True)
+def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
 
     t = update.message.text.strip()
     d = chat_data['new_donate']
@@ -121,15 +121,41 @@ def accept_new_donate_author(bot: Bot, update: Update, sesh: Session, chat: Chat
 
 
 @stuff.admin_only
-@stuff.with_chat
-@stuff.as_handler(CommandHandler, command='donates')
-def view_donates(bot: Bot, update: Update, chat: Chat):
+@stuff.as_handler(CommandHandler, command='pending')
+@stuff.inject(chat=True)
+def view_pending_donates(bot: Bot, update: Update, chat: Chat):
+
     dds = Donate.q.filter(Donate.counts == None).all()
+
     if dds:
         bot.send_message(
             chat.id,
-            templ.get_template('uncounted-donates-list.md').render(dds=dds),
+            templ.get_template('uncounted-donates-list.md').render(donates=dds),
             parse_mode=ParseMode.MARKDOWN
         )
     else:
-        bot.send_message(chat.id, 'Неподтверждённых донатов нет')
+        bot.send_message(chat.id, 'Неподтверждённых нет')
+
+
+@stuff.admin_only
+@stuff.as_handler(RegexHandler, pattern=r'^[\+\-]{1}\d{1,4}$')
+@stuff.inject(chat=True)
+def accept_reject_donate(bot: Bot, update: Update, chat: Chat):
+    counts = {'+': True, '-': False}[update.message.text[:1]]
+    did = int(update.message.text[1:])
+    d = Donate.q.get(did)
+    if not d:
+        bot.send_message(chat.id, 'такого доната нет, /donates')
+        return
+    if d.counts is not None:
+        bot.send_message(chat.id, f'этот донат уже был рассмотрен, ныне он {"не " if not d.counts else ""}считается')
+        return
+
+    d.counts = counts
+    msg = f'донат #{d.id} '
+    if not counts:
+        msg += 'больше не побеспокоит'
+    else:
+        rcv_cnt = Chat.q.filter(Chat.muted == False).count()
+        msg += f'скоро появится у подписчиков (сейчас их {rcv_cnt})'
+    bot.send_message(chat.id, msg)

@@ -10,13 +10,14 @@ from app import templ
 log = logging.getLogger(__name__)
 
 
-@stuff.as_handler(CommandHandler, command='start', chat=True, sesh=True)
+@stuff.as_handler(CommandHandler, command='start')
+@stuff.inject(chat=True, sesh=True)
 def shtart(bot, update, chat, sesh):
     """Приветствует новых пользователей или включает уведомления обратно"""
 
     if chat.muted:
         chat.muted = False
-        bot.send_message(chat.id, 'Ты в рассылке 👌, обратно - /stop👌')  # OK emoji ((((:
+        bot.send_message(chat.id, '👌 ты в рассылке, мьют через /stop')  # OK emoji ((((:
         return
 
     bot.send_message(chat.id, 'Привет!')

@@ -5,7 +5,7 @@ from pyqiwi import Wallet
 import pyqiwi
 from sqlalchemy.orm.exc import NoResultFound
 from app.models import Donate
-from app.stuff import with_session
+from app.stuff import inject
 from app import queue
 import cfg
 
@@ -20,7 +20,7 @@ _month = timedelta(days=31)
 _sec = timedelta(seconds=2)
 
 
-@with_session
+@inject(sesh=True)
 def fetch_donates(bot, job, s):
     last_qiwi = Donate.q.filter(
         Donate.source == Donate.Source.QIWI,
@@ -53,4 +53,4 @@ def fetch_donates(bot, job, s):
 
 
 # Пусть работает каждые 5 минут
-job_fetch_donates = queue.run_repeating(fetch_donates, interval=60*5)
+job_fetch_donates = queue.run_repeating(fetch_donates, interval=60*5, first=30*3)

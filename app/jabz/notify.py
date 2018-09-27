@@ -1,7 +1,6 @@
 import logging
 from telegram import Bot, ParseMode
 from app.models import Donate, Chat, ThanksADay
-from app.stuff import with_session
 from app import queue
 from app import templ
 import sqlalchemy as sa
@@ -10,8 +9,7 @@ import sqlalchemy as sa
 log = logging.getLogger(__name__)
 
 
-@with_session
-def notify_about_new_donate(bot: Bot, job, s):
+def notify_about_new_donate(bot: Bot, job):
 
     log.info('let see have we fresh donates')
     d = Donate.q.filter(Donate.counts == True, Donate.announced == False).order_by(Donate.date.asc()).first()
@@ -37,4 +35,4 @@ def notify_about_new_donate(bot: Bot, job, s):
         )
 
 
-job_notify = queue.run_repeating(notify_about_new_donate, interval=2*60)
+job_notify = queue.run_repeating(notify_about_new_donate, interval=2*60, first=1*60)

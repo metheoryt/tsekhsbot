@@ -1,6 +1,10 @@
+import logging
 from functools import wraps
 from app import dispatcher
 from app.models import Session, Chat
+
+
+log = logging.getLogger(__name__)
 
 
 def with_session(fn):
@@ -48,7 +52,7 @@ def inject(chat=False, sesh=False):
 
 def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
     """
-    Добавляет функцию как обработчик.
+    Добавляет функцию как обработчик (4 уровня!).
     Если обработчик возвращает что-либо кроме None - ожидается продолжение диалога
 
     :param handler_cls: класс обработчика (CommandHandler, MessageHandler)
@@ -72,7 +76,7 @@ def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
                 chat_data['__prev_step'] = chat_data.get('__next_step')
                 chat_data['__next_step'] = result
 
-        dispatcher.add_handler(handler_cls(callback=wrapper, pass_chat_data=True, **handler_kwargs))
+        dispatcher.add_handler(handler_cls(callback=wrapper, pass_chat_data=True, **handler_kwargs), group=4)
         return wrapper
 
     return decorator
@@ -80,9 +84,11 @@ def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
 
 def admin_only(fn):
     @wraps(fn)
-    @with_chat
-    def wrapper(*args, chat, **kwargs):
-        if not chat.is_admin:
+    def wrapper(bot, update, *args, **kwargs):
+        c = Chat.q.get(update.message.chat.id)
+        if not c.is_admin:
             return
         else:
-            return fn(*args, **kwargs)
+            return fn(bot, update, *args, **kwargs)
+
+    return wrapper

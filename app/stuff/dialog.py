@@ -24,7 +24,9 @@ def _dialog_catch_all(bot: Bot, update_or_job, chat_data: dict):
 
 def dialog_part(step: str):
     """Помечает функцию как часть диалога (см. обработчик _dialog_catch_all).
-    Может использоваться с остальными декораторами.
+    Может использоваться с остальными декораторами, но должна быть в основном наверху.
+
+
     Декорируемая функция должна принимать chat_data
 
     :param step: шаг, на котором выполняется обработчик
@@ -34,8 +36,8 @@ def dialog_part(step: str):
 
         if not _conversation_handlers:
             # при добавлении первого обработчика
-            # добавляем в отдельный канал catch-all для диалогов
-            dispatcher.add_handler(MessageHandler(Filters.all, _dialog_catch_all, pass_chat_data=True), group=1)
+            # добавляем в отдельный (более приоритетный) канал catch-all для диалогов
+            dispatcher.add_handler(MessageHandler(Filters.all, _dialog_catch_all, pass_chat_data=True), group=2)
 
         _conversation_handlers[step] = fn
 

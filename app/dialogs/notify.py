@@ -8,9 +8,10 @@ import logging
 log = logging.getLogger(__name__)
 
 
-@stuff.as_handler(CommandHandler, command='stop', chat=True)
+@stuff.as_handler(CommandHandler, command='stop')
+@stuff.inject(chat=True)
 def mute(bot: Bot, update: Update, chat: Chat):
     if not chat.muted:
         chat.muted = True
-        bot.send_message(chat.id, '👌, вернуть обратно - /start')  # OK emoji :))))
+        bot.send_message(chat.id, '👌 вернуть обратно - /start')  # OK emoji :))))
         return

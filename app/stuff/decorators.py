@@ -1,16 +1,15 @@
 from functools import wraps
-from sqlalchemy.orm import Session
 from app import dispatcher
-from app.models import Chat
+from app.models import Session, Chat
 
 
 def with_session(fn):
     """добавляет сессию в хвост позиционных аргументов"""
     @wraps(fn)
-    def wrapper(bot, update_or_job, *args, **kwargs):
+    def wrapper(*args, **kwargs):
         s = Session()
         try:
-            r = fn(bot, update_or_job, *args, s, **kwargs)
+            r = fn(*args, s, **kwargs)
             s.commit()
             return r
         except Exception:
@@ -35,17 +34,31 @@ def with_chat(fn):
     return wrapper
 
 
+def inject(chat=False, sesh=False):
+    """Шорткат для with_*"""
+    def decorator(fn):
+        if sesh:
+            fn = with_session(fn)
+        if chat:
+            fn = with_chat(fn)
+        return fn
+
+    return decorator
+
+
 def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
     """
     Добавляет функцию как обработчик.
+    Если обработчик возвращает что-либо кроме None - ожидается продолжение диалога
+
     :param handler_cls: класс обработчика (CommandHandler, MessageHandler)
+    :param pass_chat_data: один из общих параметров обработчиков, проксируемый для удобства
     :param handler_kwargs: ключевые параметры обработчика
-    :return:
     """
     def decorator(fn):
 
         @wraps(fn)
-        def wrapper(bot, update_or_job, *args, chat_data, **kwargs):
+        def wrapper(*args, chat_data, **kwargs):
             # мэйнтэйним без спросу (pass_chat_data=True ниже), но передаём только по требованию
             if pass_chat_data:
                 kwargs['chat_data'] = chat_data
@@ -55,7 +68,7 @@ def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
                 return
             else:
                 # но мы все равно должны поддерживать возможность начала диалога из любого обработчика
-                result = fn(bot, update_or_job, *args, **kwargs)
+                result = fn(*args, **kwargs)
                 chat_data['__prev_step'] = chat_data.get('__next_step')
                 chat_data['__next_step'] = result
 
@@ -66,11 +79,10 @@ def as_handler(handler_cls, pass_chat_data=False, **handler_kwargs):
 
 
 def admin_only(fn):
-
     @wraps(fn)
     @with_chat
-    def wrapper(bot, upd_or_job, chat, *args, **kwargs):
+    def wrapper(*args, chat, **kwargs):
         if not chat.is_admin:
             return
         else:
-            return fn(bot, upd_or_job, *args, **kwargs)
+            return fn(*args, **kwargs)

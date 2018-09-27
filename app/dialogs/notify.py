@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from app import stuff
 from app.models import Chat
 from telegram import Bot, Update
@@ -9,9 +8,9 @@ import logging
 log = logging.getLogger(__name__)
 
 
-@stuff.as_handler(CommandHandler, command='/stop', pass_chat_data=True, allow_edited=True)
-def mute(bot: Bot, update: Update, sesh: Session, chat: Chat, chat_data: dict):
+@stuff.as_handler(CommandHandler, command='stop', chat=True)
+def mute(bot: Bot, update: Update, chat: Chat):
     if not chat.muted:
         chat.muted = True
-        bot.send_message(chat.id, '👌, вернуть обратно - /продолжай')  # OK emoji :))))
+        bot.send_message(chat.id, '👌, вернуть обратно - /start')  # OK emoji :))))
         return

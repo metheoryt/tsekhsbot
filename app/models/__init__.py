@@ -5,6 +5,8 @@ import cfg
 
 
 engine = create_engine(cfg.DB_DSN, echo=cfg.DB_ECHO)
+
+
 Session = scoped_session(sessionmaker(bind=engine))
 
 

@@ -1,20 +1,19 @@
 from decimal import Decimal
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app import templ
 from app import stuff
 from app.models import Chat
 from telegram import ParseMode, Bot, Update
-from telegram.ext import CommandHandler, MessageHandler, Filters
+from telegram.ext import CommandHandler
 import logging
 from cfg import BOT_TOKEN
 from models import Donate
 from models.donate import Currency
 
+
 log = logging.getLogger(__name__)
 
-
-@stuff.with_chat
+@stuff.inject(chat=True)
 @stuff.as_handler(CommandHandler, command='cancel', pass_chat_data=True)
 def cancer(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     """отменяет любые незавершённые диалоги"""
@@ -22,9 +21,8 @@ def cancer(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     bot.send_message(chat.id, 'ike..')
 
 
-@stuff.with_chat
-@stuff.as_handler(CommandHandler, command='admin', pass_chat_data=True)
-def go_admin(bot: Bot, update: Update, sesh: Session, chat: Chat, chat_data: dict):
+@stuff.as_handler(CommandHandler, command='admin', pass_chat_data=True, chat=True)
+def go_admin(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     if not chat.is_private:
         bot.send_message(chat.id, 'Давай в личку')
         return
@@ -38,7 +36,7 @@ def go_admin(bot: Bot, update: Update, sesh: Session, chat: Chat, chat_data: dic
     return 'проверить токен'
 
 
-@stuff.with_chat
+@stuff.inje
 @stuff.dialog_part('проверить токен')
 def verify_token(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     chat_data['go_admin_tries'] += 1

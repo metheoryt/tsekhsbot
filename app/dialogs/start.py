@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-
 from telegram import ParseMode
 from telegram.ext import CommandHandler
 import logging
@@ -11,15 +10,13 @@ from app import templ
 log = logging.getLogger(__name__)
 
 
-@stuff.with_chat
-@stuff.with_session
-@stuff.as_handler(CommandHandler, command='start')
-def shtart(bot, update, sesh, chat):
+@stuff.as_handler(CommandHandler, command='start', chat=True, sesh=True)
+def shtart(bot, update, chat, sesh):
     """Приветствует новых пользователей или включает уведомления обратно"""
 
     if chat.muted:
         chat.muted = False
-        bot.send_message(chat.id, 'Ты в рассылке 👌, обратно - /заглохни👌')  # OK emoji ((((:
+        bot.send_message(chat.id, 'Ты в рассылке 👌, обратно - /stop👌')  # OK emoji ((((:
         return
 
     bot.send_message(chat.id, 'Привет!')

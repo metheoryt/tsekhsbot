@@ -27,32 +27,26 @@ class Donate(Base):
 
     id = sa.Column(sa.Integer(), primary_key=True)
 
-    txn_id = sa.Column(sa.Integer(), unique=True, nullable=True)
-
     amount = sa.Column(sa.Numeric(scale=2), nullable=False)
 
     currency = sa.Column(su.ChoiceType(Currency, impl=sa.Integer()), nullable=False, default=Currency.KZT)
-
     date = sa.Column(sa.DateTime(), nullable=False, default=datetime.now)
-
-    announced = sa.Column(sa.Boolean(), nullable=False, default=False)
-    """Было ли отправлено по этому пожертвованию уведомление"""
-
     source = sa.Column(su.ChoiceType(DonateSource, impl=sa.Text()), nullable=False, default=DonateSource.CASH)
     """Источник доната. По умолчанию это личные переводы"""
+    announced = sa.Column(sa.Boolean(), nullable=False, default=False)
+    """Было ли отправлено по этому пожертвованию уведомление"""
+    counts = sa.Column(sa.Boolean, nullable=True, default=None)
+    """Считается ли пожертвование за пожертвование. None если это ещё не определено"""
 
+    txn_id = sa.Column(sa.Integer(), unique=True, nullable=True)
     author_name = sa.Column(sa.Text)
-    """Его имя, если есть"""
-
+    """имя отправителя, если есть"""
     author_phone = sa.Column(sa.Text)
-    """Его телефон, если есть"""
+    """телефон отправителя, если есть"""
 
     @property
     def masked_phone(self):
         return f'{self.author_phone[:7]}xxxxx' if self.author_phone and len(self.author_phone) > 7 else None
-
-    counts = sa.Column(sa.Boolean, nullable=True, default=None)
-    """Считается ли пожертвование за пожертвование. None если это ещё не определено"""
 
     @property
     def _ago(self):

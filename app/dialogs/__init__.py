@@ -1,1 +1,1 @@
-from . import admin, notify, start
+from . import admin, notify, start, chart

@@ -5,3 +5,4 @@ sqlalchemy
 sqlalchemy_utils
 Jinja2
 python-telegram-bot[socks]
+pytz

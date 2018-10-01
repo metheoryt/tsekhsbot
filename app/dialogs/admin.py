@@ -1,11 +1,15 @@
+import re
 from decimal import Decimal
 from sqlalchemy.orm import Session
+import sqlalchemy as sa
 from app import templ
 from app import stuff
 from app.models import Chat
 from telegram import ParseMode, Bot, Update
 from telegram.ext import CommandHandler, RegexHandler
 import logging
+
+from app.models.misc import DonateAuthor
 from cfg import BOT_TOKEN
 from app.models import Donate
 
@@ -80,43 +84,61 @@ def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: di
     # currency KZT по умолчанию
     d = Donate(amount=Decimal(amount), currency=Donate.Currency[currency.upper()] if currency else None)
     chat_data['new_donate'] = d
-    bot.send_message(chat.id, 'Как зовут автора (или номер его телефона)?')
+    bot.send_message(chat.id, 'Как зовут автора? Можно часть имени, и если он уже есть, я предложу варианты.'
+                              'Если не найду - сохраню как нового.')
 
-    return 'получить имя или телефон автора'
+    return 'получить имя автора'
 
 
-@stuff.dialog_part('получить имя или телефон автора')
+@stuff.dialog_part('получить имя автора')
 @stuff.inject(chat=True, sesh=True)
 def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
 
     t = update.message.text.strip()
     d = chat_data['new_donate']
 
-    def save_donate():
-        sesh.add(d)
-        bot.send_message(
-            chat.id,
-            f'Я сохранил донат, но о нём никто не узнает, '
-            f'пока ты не разрешишь (/pending)',
-            parse_mode=ParseMode.MARKDOWN
-        )
+    authors = DonateAuthor.q.filter(DonateAuthor.name.ilike(f'%{t.lower()[1:-1]}%')).all()
 
-    if t.lower() in ['не', 'нет', '-', 'no', 'nope', 'никак', 'ни как', 'отсутствует', 'жок', 'нит']:
-        return save_donate()
+    if authors:
+        msg = 'Один из них? Отправь его ID\n'
+        for a in authors:
+            msg += f'{a.id} - {a.name}'
+            if a.phone:
+                msg += f'({a.phone})'
+            msg += '\n'
+        bot.send_message(chat.id, msg)
+        return 'получить ID автора'
 
-    if t.startswith('8') or t.startswith('+7') or t.startswith('7'):
-        d.author_phone = t
-        if not d.author_name:
-            bot.send_message(chat.id, 'А имя?')
     else:
-        d.author_name = t
-        if not d.author_phone:
-            bot.send_message(chat.id, 'А телефон?')
+        assert len(t > 4)
+        na = DonateAuthor(name=t.title())
+        sesh.add(na)
+        d.author = na
 
-    if not d.author_name or not d.author_phone:
-        return 'получить имя или телефон автора'
-    else:
-        return save_donate()
+    return 'сохранить донат'
+
+
+@stuff.dialog_part('получить ID автора')
+@stuff.inject(chat=True, sesh=True)
+def accept_author_id(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
+    d = chat_data['new_donate']
+    aid = int(update.message.text.strip())
+    a = DonateAuthor.q.get(aid)
+    assert a is not None
+    d.author = a
+    return 'сохранить донат'
+
+
+@stuff.dialog_part('сохранить донат')
+@stuff.inject(chat=True, sesh=True)
+def save_new_donate(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
+    d = chat_data['new_donate']
+    sesh.add(d)
+    bot.send_message(
+        chat.id,
+        f'Я сохранил донат, но о нём никто не узнает, '
+        f'пока ты не разрешишь (/pending)'
+    )
 
 
 @stuff.admin_only
@@ -137,11 +159,12 @@ def view_pending_donates(bot: Bot, update: Update, chat: Chat):
 
 
 @stuff.admin_only
-@stuff.as_handler(RegexHandler, pattern=r'^[\+\-]{1}\d{1,4}$')
+@stuff.as_handler(RegexHandler, pattern=r'^\d{1,4} (да|нет)$')
 @stuff.inject(chat=True, sesh=True)
 def accept_reject_donate(bot: Bot, update: Update, chat: Chat, sesh):
-    counts = {'+': True, '-': False}[update.message.text[:1]]
-    did = int(update.message.text[1:])
+    did, verdict = update.message.text.split()
+    counts = {'да': True, 'нет': False}[verdict]
+    did = int(did)
     d = Donate.q.get(did)
     if not d:
         bot.send_message(chat.id, 'такого доната нет, /pending')

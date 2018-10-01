@@ -1,15 +1,21 @@
-from app.models import Base, engine, ThanksADay, Session
+from app.models import Base, engine, ThanksADay, Exchange, Session, DonateAuthor
 
 
 def ramp_up():
-    if not ThanksADay.q.count():
-        _s = Session()
-        for t in ['большое спасибо', 'большой рахмет']:
-            t = ThanksADay(text=t)
-            _s.add(t)
-        _s.commit()
-        _s.close()
-        del _s
+    _s = Session()
+    for t in ['большое спасибо', 'большой рахмет']:
+        t = ThanksADay(text=t)
+        _s.add(t)
+
+    for id, rate in [(398, 1), (643, 5), (840, 360)]:
+        e = Exchange(id=id, rate=rate)
+        _s.add(e)
+
+    a = DonateAuthor(name='Неизвестный Человек', id=1)
+    _s.add(a)
+
+    _s.commit()
+    _s.close()
 
 
 if __name__ == '__main__':

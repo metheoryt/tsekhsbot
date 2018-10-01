@@ -5,18 +5,23 @@ from pyqiwi import Wallet
 import pyqiwi
 from sqlalchemy.orm.exc import NoResultFound
 from app.models import Donate
+from app.models.misc import DonateAuthor
 from app.stuff import inject
 from app import queue
 import cfg
+from pytz import utc, timezone
 
 
 log = logging.getLogger(__name__)
 
 
+msk = timezone('Europe/Moscow')
+
+
 w = Wallet(token=cfg.QIWI_TOKEN, number=cfg.QIWI_NUMBER)
 
 
-_month = timedelta(days=31)
+_month = timedelta(days=60)
 _sec = timedelta(seconds=2)
 
 
@@ -26,31 +31,53 @@ def fetch_donates(bot, job, s):
         Donate.source == Donate.Source.QIWI,
     ).order_by(Donate.date.desc()).first()
 
-    start_date = last_qiwi.date -_sec if last_qiwi else datetime.now() - _month
-
     # Все входящие операции за либо последний месяц, либо промежуток
     # от даты последней транзакции до сейчас
-    h = w.history(rows=40, operation='IN', start_date=start_date, end_date=datetime.now())
+
+    start_date = last_qiwi.date - _sec if last_qiwi else datetime.utcnow() - _month
+    now = datetime.utcnow()
+
+    log.info('querying qiwi')
+
+    # ! обёртка api форсит часовой пояс UTC+3, а у нас всё в UTC+0, подстраиваемся
+    msk_start = msk.fromutc(start_date)
+    msk_now = msk.fromutc(now)
+    h = w.history(
+        rows=40,
+        operation='IN',
+        start_date=msk_start,
+        end_date=msk_now
+    )
 
     ts = h['transactions']
     """:type: list[pyqiwi.types.Transaction]"""
 
-    for t in ts:
+    for t in ts[::-1]:
         log.info(f'checking ts #{t.txn_id}')
         try:
             Donate.q.filter(Donate.txn_id == t.txn_id).one()
         except NoResultFound:
+            phone = str(t.account)
+            try:
+                a = DonateAuthor.q.filter(DonateAuthor.phone == phone).one()
+            except NoResultFound:
+                a = DonateAuthor(phone=phone)
+                s.add(a)
+                s.commit()
+                log.info(f'added new {a!r}')
+
             new_donate = Donate(
-                extid=t.txn_id,
+                txn_id=t.txn_id,
                 source=Donate.Source.QIWI,
-                date=t.date,
+                date=utc.normalize(t.date).replace(tzinfo=None),  # приводим к UTC и удаляем tz
                 amount=Decimal(t.total.amount),
                 currency=Donate.Currency(t.total.currency),
-                author_phone=str(t.account) if t.account else None
+                author=a
             )
-            log.info(f'adding fresh {new_donate!r}')
+
             s.add(new_donate)
+            log.info(f'added fresh {new_donate!r}')
 
 
-# Пусть работает каждые 5 минут
-job_fetch_donates = queue.run_repeating(fetch_donates, interval=60*5, first=30*3)
+# стартует через 10 секунд после запуска
+job_fetch_donates = queue.run_repeating(fetch_donates, interval=cfg.QIWI_FETCH_INTERVAL, first=10)

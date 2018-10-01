@@ -16,3 +16,6 @@ QIWI_ACCEPT_URL = r('QIWI_ACCEPT_URL')
 LOGLEVEL = o('LOGLEVEL', 'INFO')
 DB_DSN = r('DB_DSN')
 DB_ECHO = True if o('DB_ECHO').lower() == 'true' else False
+QIWI_FETCH_INTERVAL = o('QIWI_FETCH_INTERVAL', 60*5)
+
+LOCAL_TZ = o('LOCAL_TZ', 'Asia/Almaty')

@@ -20,6 +20,6 @@ class Base(_Base):
     q = Session.query_property()
 
 
+from .misc import ThanksADay, Exchange, DonateAuthor
 from .chat import Chat
 from .donate import Donate
-from .misc import ThanksADay

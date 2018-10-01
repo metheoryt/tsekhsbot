@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+  db:
+    image: postgres:10
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: %{PG_PASS}
+      POSTGRES_USER: %{PG_USER}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  app:
+    build: .
+    restart: always
+    environment:
+      DB_DSN: postgres://%{PG_USER}:%{PG_PASS}@db:5432/postgres
+
+volumes:
+  pgdata:

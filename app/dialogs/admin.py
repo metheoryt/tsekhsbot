@@ -51,7 +51,9 @@ def verify_token(bot: Bot, update: Update, chat: Chat, sesh, chat_data: dict):
 
     elif update.message.text.strip() == BOT_TOKEN:
         chat.is_admin = True
-        bot.send_message(chat.id, 'Хорошо, теперь ты админ!')
+        bot.send_message(chat.id, 'Хорошо, теперь ты админ!\n'
+                                  'Добавить донат вручную - /donate\n'
+                                  'Посмотреть неподтверждённые донаты - /pending')
         chat_data.pop('go_admin_tries')
 
     else:

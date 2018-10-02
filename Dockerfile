@@ -1,12 +1,11 @@
 FROM python:3.7
 
-RUN mkdir -p /app
-WORKDIR /app
+WORKDIR /usr/src/app
 
 RUN pip install --upgrade pip
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-ENTRYPOINT ['python']
-CMD ['run.py']
+
+CMD ['python', './run.py']

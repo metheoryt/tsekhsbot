@@ -98,6 +98,14 @@ def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: di
     return 'получить имя автора'
 
 
+def save_donate(d, chat, bot):
+    bot.send_message(
+        chat.id,
+        f'Я сохранил донат, но о нём никто не узнает, '
+        f'пока ты не разрешишь (/pending)'
+    )
+
+
 @stuff.dialog_part('получить имя автора')
 @stuff.admin_only
 @stuff.inject(chat=True, sesh=True)
@@ -133,7 +141,7 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
             sesh.add(na)
             sesh.commit()
             d.author = na
-            return 'сохранить донат'
+            sesh.add(d)
     else:
         # значит есть минимум телефон
         # ищем точное совпадение, если есть - сохраняем новое имя под этим номером
@@ -151,8 +159,7 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
             sesh.commit()
 
         d.author = author
-
-    return 'сохранить донат'
+    return save_donate(d, chat, bot)
 
 
 @stuff.dialog_part('получить ID автора')
@@ -172,20 +179,7 @@ def accept_author_id(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_d
         assert a is not None, 'не знаю, о ком ты'
 
     d.author = a
-    return 'сохранить донат'
-
-
-@stuff.dialog_part('сохранить донат')
-@stuff.admin_only
-@stuff.inject(chat=True, sesh=True)
-def save_new_donate(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
-    d = chat_data['new_donate']
-    sesh.add(d)
-    bot.send_message(
-        chat.id,
-        f'Я сохранил донат, но о нём никто не узнает, '
-        f'пока ты не разрешишь (/pending)'
-    )
+    return save_donate(d, chat, bot)
 
 
 @stuff.admin_only

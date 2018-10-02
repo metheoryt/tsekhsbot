@@ -141,7 +141,6 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
             sesh.add(na)
             sesh.commit()
             d.author = na
-            sesh.add(d)
     else:
         # значит есть минимум телефон
         # ищем точное совпадение, если есть - сохраняем новое имя под этим номером
@@ -159,6 +158,7 @@ def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session
             sesh.commit()
 
         d.author = author
+    sesh.add(d)
     return save_donate(d, chat, bot)
 
 
@@ -179,6 +179,7 @@ def accept_author_id(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_d
         assert a is not None, 'не знаю, о ком ты'
 
     d.author = a
+    sesh.add(d)
     return save_donate(d, chat, bot)
 
 

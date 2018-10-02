@@ -3,7 +3,7 @@ from time import sleep
 from app import updater
 import logging
 import cfg
-from app.models import engine, Base, Exchange
+from app.models import engine, Base, Exchange, DonateAuthor
 from refresh import ramp_up
 
 logging.basicConfig(
@@ -22,11 +22,11 @@ if __name__ == '__main__':
         except Exception as e:
             if i == 4:
                 raise
-            log.warning(f'cannot connect to db, will try {4-i} more times ({e!r})')
+            log.warning(f'cannot connect to db, will try {4-i} more times')
             sleep(3)
 
     Base.metadata.create_all(engine)
-    if not Exchange.q.count():
+    if not Exchange.q.count() and not DonateAuthor.q.count():
         log.info('fresh install detected, filling DB with static data')
         ramp_up()
 

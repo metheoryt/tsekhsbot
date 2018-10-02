@@ -11,7 +11,7 @@ def ramp_up():
         e = Exchange(id=id, rate=rate)
         _s.add(e)
 
-    a = DonateAuthor(name='Неизвестный Человек', id=1)
+    a = DonateAuthor(name='Неизвестный Человек')  # он должен быть #1
     _s.add(a)
 
     _s.commit()

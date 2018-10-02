@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 @stuff.inject(sesh=True)  # только ради автокоммита в конце
 def notify_about_new_donate(bot: Bot, job, sesh):
 
-    log.info('let see have we fresh donates')
+    log.info('let\'s see if we have some fresh donates')
     d = Donate.q.filter(Donate.counts == True, Donate.announced == False).order_by(Donate.date.asc()).first()
     """:type: Donate"""
 

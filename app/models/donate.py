@@ -48,7 +48,7 @@ class Donate(Base):
     counts = sa.Column(sa.Boolean, nullable=True, default=None)
     """Считается ли пожертвование за пожертвование. None если это ещё не определено"""
 
-    txn_id = sa.Column(sa.Integer(), unique=True, nullable=True)
+    txn_id = sa.Column(sa.BigInteger(), unique=True, nullable=True)
 
     author_id = sa.Column(sa.Integer, sa.ForeignKey('donate_author.id'), nullable=False, default=1)
 

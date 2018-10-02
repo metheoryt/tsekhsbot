@@ -18,7 +18,11 @@ def ramp_up():
     _s.close()
 
 
-if __name__ == '__main__':
+def reinit_db():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     ramp_up()
+
+
+if __name__ == '__main__':
+    reinit_db()

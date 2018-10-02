@@ -34,7 +34,7 @@ def generate_chart(limit: int):
 
 @stuff.as_handler(CommandHandler, command='chart')
 @stuff.inject(chat=True)
-def get_chart(bot: Bot, update: Update, chat: Chat, sesh):
+def get_chart(bot: Bot, update: Update, chat: Chat):
     """Чарт состоит из 5 самых щедрых донатеров
     Учитываются активные донаты со всех источников и по всем валютам (курс примерный)
     Остальные показываются в общей сумме

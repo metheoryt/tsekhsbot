@@ -2,9 +2,8 @@ import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pyqiwi import Wallet
-import pyqiwi
 from sqlalchemy.orm.exc import NoResultFound
-from app.models import Donate
+from app.models import Donate, Chat
 from app.models.misc import DonateAuthor
 from app.stuff import inject
 from app import queue
@@ -52,6 +51,8 @@ def fetch_donates(bot, job, s):
     ts = h['transactions']
     """:type: list[pyqiwi.types.Transaction]"""
 
+    changes = False
+
     for t in ts[::-1]:
         log.info(f'checking ts #{t.txn_id}')
         try:
@@ -77,7 +78,12 @@ def fetch_donates(bot, job, s):
 
             s.add(new_donate)
             log.info(f'added fresh {new_donate!r}')
+            changes = True
+    if changes:
+        admins = Chat.q.filter(Chat.is_admin == True, Chat.muted == False).all()
+        for ac in admins:
+            bot.send_message(ac.id, 'Новые донаты! /pending')
 
 
-# стартует через 10 секунд после запуска
-job_fetch_donates = queue.run_repeating(fetch_donates, interval=cfg.QIWI_FETCH_INTERVAL, first=10)
+# стартует через 20 секунд после запуска
+job_fetch_donates = queue.run_repeating(fetch_donates, interval=cfg.QIWI_FETCH_INTERVAL, first=20)

@@ -12,6 +12,9 @@ def _dialog_catch_all(bot: Bot, update_or_job, chat_data: dict):
         # ожидается ответ
         try:
             result = _conversation_handlers[next_step](bot, update_or_job, chat_data=chat_data)
+        except AssertionError as e:
+            bot.send_message(update_or_job.message.chat.id, str(e))
+            raise
         except Exception:
             # если не удалось обработать обновление - остаёмся на том же шаге
             if isinstance(update_or_job, Update):

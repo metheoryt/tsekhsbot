@@ -1,9 +1,11 @@
 import re
 from decimal import Decimal
 from sqlalchemy.orm import Session
-import sqlalchemy as sa
+from sqlalchemy.orm.exc import NoResultFound
+
 from app import templ
 from app import stuff
+from app.jabz import job_notify
 from app.models import Chat
 from telegram import ParseMode, Bot, Update
 from telegram.ext import CommandHandler, RegexHandler
@@ -74,6 +76,7 @@ def new_donate(bot: Bot, update: Update, chat: Chat):
 
 
 @stuff.dialog_part('получить сумму пожертвования')
+@stuff.admin_only
 @stuff.inject(chat=True)
 def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: dict):
     t = update.message.text
@@ -86,52 +89,94 @@ def accept_new_donate_amount(bot: Bot, update: Update, chat: Chat, chat_data: di
     # currency KZT по умолчанию
     d = Donate(amount=Decimal(amount), currency=Donate.Currency[currency.upper()] if currency else None)
     chat_data['new_donate'] = d
-    bot.send_message(chat.id, 'Как зовут автора? Можно часть имени, и если он уже есть, я предложу варианты.'
-                              'Если не найду - сохраню как нового.')
+    bot.send_message(chat.id, 'Как зовут донатера? '
+                              'Если есть его номер его телефона, '
+                              'то можешь ввести его следом за фио в формате `+77xxxxxxxxx`\n'
+                              'Например `Леший` или `Вася Пупкин +77001234567`',
+                     parse_mode=ParseMode.MARKDOWN)
 
     return 'получить имя автора'
 
 
 @stuff.dialog_part('получить имя автора')
+@stuff.admin_only
 @stuff.inject(chat=True, sesh=True)
 def accept_new_donate_author(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
 
-    t = update.message.text.strip()
+    phone_pattern = r'\+7\d{10}'
+
+    t = re.sub('\s+', ' ', update.message.text.strip())
+    assert len(t) > 3, 'Имя слишком короткое, давай ещё раз'
+
     d = chat_data['new_donate']
 
-    authors = DonateAuthor.q.filter(DonateAuthor.name.ilike(f'%{t.lower()[1:-1]}%')).all()
+    phones = re.findall(phone_pattern, t)
+    assert len(phones) <= 1, 'ну и чё мне делать с несколькими номерами? повтори'
 
-    if authors:
-        msg = 'Один из них? Отправь его ID\n'
-        for a in authors:
-            msg += f'{a.id} - {a.name}'
-            if a.phone:
-                msg += f'({a.phone})'
-            msg += '\n'
-        bot.send_message(chat.id, msg)
-        return 'получить ID автора'
-
+    if not phones:
+        # значит есть только имя автора
+        # ищем совпадения, если есть - просим уточнить
+        # если совпадений нет - сохраняем
+        authors = DonateAuthor.q.filter(DonateAuthor.name.ilike(f'%{t.lower()[1:-1]}%')).all()
+        if authors:
+            msg = 'Если это один из них, отправь его ID. Или отправь "-" и я добавлю старый\n'
+            chat_data['author_name'] = t
+            for a in authors:
+                msg += f'{a.id} - {a.name}'
+                if a.phone:
+                    msg += f' ({a.phone})'
+                msg += '\n'
+            bot.send_message(chat.id, msg)
+            return 'получить ID автора'
+        else:
+            na = DonateAuthor(name=t.title())
+            sesh.add(na)
+            sesh.commit()
+            d.author = na
+            return 'сохранить донат'
     else:
-        assert len(t > 4)
-        na = DonateAuthor(name=t.title())
-        sesh.add(na)
-        d.author = na
+        # значит есть минимум телефон
+        # ищем точное совпадение, если есть - сохраняем новое имя под этим номером
+        # иначе создаём нового автора
+        p = phones[0]
+        new_name = re.sub(phone_pattern, '', t).strip()
+        try:
+            author = DonateAuthor.q.filter(DonateAuthor.phone == p).one()
+        except NoResultFound:
+            author = DonateAuthor(name=new_name, phone=p)
+            sesh.add(author)
+            sesh.commit()
+        else:
+            author.name = new_name
+            sesh.commit()
+
+        d.author = author
 
     return 'сохранить донат'
 
 
 @stuff.dialog_part('получить ID автора')
+@stuff.admin_only
 @stuff.inject(chat=True, sesh=True)
 def accept_author_id(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
     d = chat_data['new_donate']
-    aid = int(update.message.text.strip())
-    a = DonateAuthor.q.get(aid)
-    assert a is not None
+    t = update.message.text.strip()
+
+    if t == '-':
+        a = DonateAuthor(name=chat_data.pop('author_name'))
+        sesh.add(a)
+        sesh.commit()
+    else:
+        aid = int(t)
+        a = DonateAuthor.q.get(aid)
+        assert a is not None, 'не знаю, о ком ты'
+
     d.author = a
     return 'сохранить донат'
 
 
 @stuff.dialog_part('сохранить донат')
+@stuff.admin_only
 @stuff.inject(chat=True, sesh=True)
 def save_new_donate(bot: Bot, update: Update, chat: Chat, sesh: Session, chat_data: dict):
     d = chat_data['new_donate']
@@ -182,5 +227,8 @@ def accept_reject_donate(bot: Bot, update: Update, chat: Chat, sesh):
         msg += 'больше не побеспокоит'
     else:
         rcv_cnt = Chat.q.filter(Chat.muted == False).count()
-        msg += f'скоро появится у подписчиков (сейчас их {rcv_cnt})'
+        msg += f'сейчас появится у подписчиков (сейчас их {rcv_cnt})'
     bot.send_message(chat.id, msg)
+
+    # здесь можно запустить сразу
+    job_notify.run(bot)

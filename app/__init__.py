@@ -23,6 +23,3 @@ updater = Updater(token=cfg.BOT_TOKEN)
 bot = updater.bot
 queue = updater.job_queue
 dispatcher = updater.dispatcher
-
-
-from . import dialogs, jabz
